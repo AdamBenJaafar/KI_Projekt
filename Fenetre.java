@@ -1,7 +1,5 @@
 package Übungen;
 
-import sun.text.resources.cldr.et.FormatData_et;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.GridLayout;
@@ -10,11 +8,10 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 
-public  class Fenetre extends JFrame implements Drawing_Grid, KeyListener {
+public  class Fenetre extends JFrame implements demonstrationGrid, KeyListener {
 
     public static JButton[][] JBA;
 
@@ -23,11 +20,11 @@ public  class Fenetre extends JFrame implements Drawing_Grid, KeyListener {
     public ArrayList<JButton> JBL;
 
     public Thread th = new Thread();
-    public RunnableDemo rd;
+    public AlgorithmThread rd;
 
-        private ButtonGroup bgmenu;
-        private ButtonGroup actionmenu;
-        private ButtonGroup statemenu;
+    private ButtonGroup bgmenu;
+    private ButtonGroup actionmenu;
+    private ButtonGroup statemenu;
 
     private static int gx;
     private static int gy;
@@ -49,56 +46,7 @@ public  class Fenetre extends JFrame implements Drawing_Grid, KeyListener {
         th.interrupt();
     }
 
-    class RunnableDemo implements Runnable {
-        private Thread t;
-        private String threadName;
-        private int x;
-        private int y;
 
-        RunnableDemo( String name, int x, int y) {
-            threadName = name;
-            this.x=x;
-            this.y=y;
-            System.out.println("Creating " +  threadName );
-        }
-
-        public void run() {
-            System.out.println("Running " +  threadName );
-            try {
-                switch(this.threadName) {
-                    case "BFS":
-                        AlgorithmsUtil.bfs(this.x, this.y, gx,gy,map,JBA,Fenetre.this);
-                        break;
-                    case "DFS":
-                        AlgorithmsUtil.dfs(this.x, this.y,gx,gy,map,JBA);
-                        break;
-                }
-
-//                for(int i = 4; i > 0; i--) {
-//                    System.out.println("Thread: " + threadName + ", " + i);
-//                    // Let the thread sleep for a while.
-//                    Thread.sleep(50);
-//                }
-            } catch (InterruptedException e) {
-                System.out.println("Thread " +  threadName + " interrupted.");
-            }
-            System.out.println("Thread " +  threadName + " exiting.");
-        }
-
-        public void start () {
-            System.out.println("Starting " +  threadName );
-            if (t == null) {
-                t = new Thread (this, threadName);
-                t.start ();
-            }
-        }
-
-        public void stop(){
-
-        }
-
-
-    }
 
     public JButton getGridButton(int row, int col) {
         int index = row * JBA.length + col;
@@ -125,7 +73,7 @@ public  class Fenetre extends JFrame implements Drawing_Grid, KeyListener {
                 for (Enumeration<AbstractButton> buttons = Fenetre.this.actionmenu.getElements(); buttons.hasMoreElements();) {
                     AbstractButton button = buttons.nextElement();
                     if (button.isSelected()) {
-                        if ( button.getLabel().equals("End")) {
+                        if ( button.getLabel().equals("Goal")) {
                             gx = i;
                             gy = j;
                             return;
@@ -143,7 +91,7 @@ public  class Fenetre extends JFrame implements Drawing_Grid, KeyListener {
                     if (button.isSelected()) {
 
 
-                        RunnableDemo R1 = new RunnableDemo(button.getLabel(),i,j);
+                        AlgorithmThread R1 = new AlgorithmThread(button.getLabel(),i,j);
                         Thread thready = new Thread(R1);
                         th = thready;
                         thready.start();
@@ -197,7 +145,7 @@ public  class Fenetre extends JFrame implements Drawing_Grid, KeyListener {
         group.add(menuItem);
         menu.add(menuItem);
 
-        menuItem = new JRadioButtonMenuItem("Center");
+        menuItem = new JRadioButtonMenuItem("A*");
         group.add(menuItem);
         menu.add(menuItem);
 
@@ -246,7 +194,7 @@ public  class Fenetre extends JFrame implements Drawing_Grid, KeyListener {
         groupAction.add(menuItem);
         actions.add(menuItem);
 
-        menuItem = new JRadioButtonMenuItem("End");
+        menuItem = new JRadioButtonMenuItem("Goal");
         groupAction.add(menuItem);
         actions.add(menuItem);
 
@@ -295,9 +243,16 @@ public  class Fenetre extends JFrame implements Drawing_Grid, KeyListener {
         this.setVisible(true);
     }
 
-
-
-
+    public void updateLineOfSight(int x, int y, int [][] losvmap){
+        for ( int i = x-3 ; i <= x+3 ; i++ ) {
+            for ( int j = y-3 ; j <= y+3 ; j++ ) {
+                if (!( i < 0 || i >= losvmap.length || j < 0 || j >= losvmap[0].length ) && losvmap[i][j] == 0) {
+                    losvmap[i][j]=1;
+                    JBA[i][j].setBackground(map[i][j] == 1 ? Color.black : Color.WHITE );
+                }
+            }
+        }
+    }
 
     public void clearMap(){
         for ( JButton []JB : JBA ){
@@ -308,13 +263,78 @@ public  class Fenetre extends JFrame implements Drawing_Grid, KeyListener {
         }
     }
 
-    public static void draw() {
-        System.out.println("loolololo");
+    public void color(int x,int y, Color color){
+        JBA[x][y].setBackground(color);
+    }
+
+    public void showMap(){
         for ( int i = 0 ; i < JBA.length ; i++ ) {
             for ( int j =  0 ; j < JBA.length; j++ ) {
                 JBA[i][j].setBackground(map[i][j] == 0 ? Color.WHITE : Color.black );
             }
         }
+    }
+
+    public static void draw() {
+        for ( int i = 0 ; i < JBA.length ; i++ ) {
+            for ( int j =  0 ; j < JBA.length; j++ ) {
+                JBA[i][j].setBackground(map[i][j] == 0 ? Color.WHITE : Color.black );
+            }
+        }
+    }
+
+    class AlgorithmThread implements Runnable {
+        private Thread t;
+        private String threadName;
+        private int x;
+        private int y;
+
+        AlgorithmThread( String name, int x, int y) {
+            threadName = name;
+            this.x=x;
+            this.y=y;
+            System.out.println("Creating " +  threadName );
+        }
+
+        public void run() {
+            System.out.println("Running " +  threadName );
+            try {
+                switch(this.threadName) {
+                    case "BFS":
+                        AlgorithmsUtil.bfs(this.x, this.y, gx,gy,map,JBA,Fenetre.this);
+                        break;
+                    case "DFS":
+                        AlgorithmsUtil.dfs(this.x, this.y,gx,gy,map,JBA);
+                        break;
+                    case "A*":
+                        AlgorithmsUtil.aStar(this.x, this.y,gx,gy,map,JBA,Fenetre.this);
+                        break;
+                }
+
+//                for(int i = 4; i > 0; i--) {
+//                    System.out.println("Thread: " + threadName + ", " + i);
+//                    // Let the thread sleep for a while.
+//                    Thread.sleep(50);
+//                }
+            } catch (InterruptedException e) {
+                System.out.println("Thread " +  threadName + " interrupted.");
+            }
+            System.out.println("Thread " +  threadName + " exiting.");
+        }
+
+        public void start () {
+            System.out.println("Starting " +  threadName );
+            if (t == null) {
+                t = new Thread (this, threadName);
+                t.start ();
+            }
+        }
+
+        public void stop(){
+
+        }
+
+
     }
 
 }
